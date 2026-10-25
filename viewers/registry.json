@@ -1,0 +1,62 @@
+{
+  "version": "1.0.0",
+  "githubPagesBase": "https://ringo3apples.github.io/HTMLContainerBuilder/viewers/",
+  "viewers": [
+    {
+      "id": "vrm",
+      "name": "VRM 3Dアバタービューア",
+      "extensions": ["vrm"],
+      "js": "vrm/vrm.js",
+      "css": "vrm/vrm.css",
+      "description": "@pixiv/three-vrm による3Dアバター表示、呼吸・瞬きモーション、HUD表示",
+      "dependencies": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/controls/OrbitControls.js": "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js",
+        "three/addons/loaders/GLTFLoader.js": "https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js",
+        "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@2.1.3/lib/three-vrm.module.js"
+      }
+    },
+    {
+      "id": "stl",
+      "name": "3D STLモデルビューア",
+      "extensions": ["stl"],
+      "js": "stl/stl.js",
+      "css": "stl/stl.css",
+      "description": "Three.js による3Dメッシュ表示、法線計算、OrbitControls操作",
+      "dependencies": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/controls/OrbitControls.js": "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js",
+        "three/addons/loaders/STLLoader.js": "https://unpkg.com/three@0.160.0/examples/jsm/loaders/STLLoader.js"
+      }
+    },
+    {
+      "id": "docx",
+      "name": "Word文書ビューア",
+      "extensions": ["docx"],
+      "js": "docx/docx.js",
+      "css": "docx/docx.css",
+      "description": "docx-preview によるWord文書のレイアウトページプレビュー",
+      "dependencies": {
+        "docx-preview": "https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/+esm"
+      }
+    },
+    {
+      "id": "table",
+      "name": "データ表・テキストビューア",
+      "extensions": ["csv", "tsv", "json", "txt"],
+      "js": "table/table.js",
+      "css": "table/table.css",
+      "description": "CSV/TSVのテーブル表示、JSON/TXTの構造化テキスト表示",
+      "dependencies": {}
+    },
+    {
+      "id": "raw",
+      "name": "汎用生データ保存プリセット",
+      "extensions": ["*"],
+      "js": "raw/raw.js",
+      "css": "raw/raw.css",
+      "description": "あらゆるファイル形式に対応したバイナリ情報表示と元データ解凍保存",
+      "dependencies": {}
+    }
+  ]
+}
