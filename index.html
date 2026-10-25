@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTMLContainer Builder | ポータブル自己展開コンテナ生成ツール</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- fflate (Fast ZIP compression & decompression) -->
+  <script src="https://unpkg.com/fflate@0.8.2/umd/index.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              400: '#4ade80',
+              500: '#22c55e',
+              600: '#16a34a'
+            },
+            accent: {
+              400: '#38bdf8',
+              500: '#0ea5e9'
+            },
+            surface: {
+              800: '#1e212b',
+              850: '#171923',
+              900: '#0f1117',
+              950: '#090a0f'
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f1117; }
+    ::-webkit-scrollbar-thumb { background: #272c3d; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3d455e; }
+    .code-editor {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      tab-size: 2;
+    }
+  </style>
+</head>
+<body class="bg-surface-950 text-slate-200 min-h-screen flex flex-col font-sans antialiased selection:bg-brand-500/30 selection:text-brand-400">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800/80 bg-surface-900/90 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-500 to-accent-500 flex items-center justify-center shadow-lg shadow-brand-500/20 text-slate-950">
+          <i data-lucide="package" class="w-5 h-5 stroke-[2.5]"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="font-bold text-lg text-white tracking-tight">HTMLContainer <span class="text-brand-400">Builder</span></h1>
+            <span class="px-2 py-0.5 text-[10px] font-mono font-semibold rounded bg-brand-500/10 text-brand-400 border border-brand-500/20">v2 Base64 Safe</span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">ダブルクリックで即時起動するBase64インライン型ポータブルHTMLコンテナ生成</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2">
+        <button id="btn-quick-sample-stl" class="text-xs px-3 py-1.5 rounded-lg border border-slate-700 bg-surface-850 hover:bg-surface-800 text-slate-300 transition flex items-center space-x-1.5">
+          <i data-lucide="box" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <span>STLサンプル</span>
+        </button>
+        <button id="btn-quick-sample-vrm" class="text-xs px-3 py-1.5 rounded-lg border border-purple-500/30 bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 transition flex items-center space-x-1.5">
+          <i data-lucide="user" class="w-3.5 h-3.5 text-purple-400"></i>
+          <span>VRMサンプル読込</span>
+        </button>
+        <a href="#how-it-works" class="text-xs text-slate-400 hover:text-white transition flex items-center space-x-1 ml-2">
+          <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+          <span class="hidden md:inline">file:/// CORS対策仕様</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left Column: Settings & Input (7 cols) -->
+    <div class="lg:col-span-7 space-y-6">
+
+      <!-- Step 1: File Input Section -->
+      <section class="bg-surface-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-2">
+            <span class="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 text-xs font-bold flex items-center justify-center border border-brand-500/30">1</span>
+            <h2 class="text-base font-semibold text-white">データファイル（ペイロード）</h2>
+          </div>
+          <span class="text-xs text-slate-400 font-mono">.vtu, .vrm, .stl, .xlsx, .csv, etc.</span>
+        </div>
+
+        <!-- Drag & Drop Zone -->
+        <div id="dropzone" class="relative group border-2 border-dashed border-slate-700 hover:border-brand-500/70 rounded-xl p-6 text-center cursor-pointer transition-all duration-200 bg-surface-950/40 hover:bg-surface-850/50">
+          <input type="file" id="fileInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+          
+          <div id="dropzone-empty" class="space-y-3 py-4">
+            <div class="w-12 h-12 mx-auto rounded-full bg-slate-800/80 group-hover:bg-brand-500/20 group-hover:text-brand-400 flex items-center justify-center transition-colors text-slate-400">
+              <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-200 group-hover:text-brand-400 transition-colors">ここにファイルをドラッグ＆ドロップ</p>
+              <p class="text-xs text-slate-500 mt-1">または クリックしてファイルを選択</p>
+            </div>
+            <div class="flex flex-wrap items-center justify-center gap-1.5 pt-2">
+              <span class="px-2 py-0.5 text-[10px] bg-slate-800 text-slate-400 rounded">3D (.stl, .vtu, .vrm)</span>
+              <span class="px-2 py-0.5 text-[10px] bg-slate-800 text-slate-400 rounded">表データ (.xlsx, .csv)</span>
+              <span class="px-2 py-0.5 text-[10px] bg-slate-800 text-slate-400 rounded">生データ・画像</span>
+            </div>
+          </div>
+
+          <!-- File Loaded Preview -->
+          <div id="dropzone-loaded" class="hidden flex items-center justify-between p-3 rounded-lg bg-surface-850 border border-slate-700/80">
+            <div class="flex items-center space-x-3 overflow-hidden">
+              <div id="file-icon-badge" class="w-10 h-10 rounded-lg bg-brand-500/10 text-brand-400 border border-brand-500/20 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="file-code" class="w-5 h-5"></i>
+              </div>
+              <div class="text-left truncate">
+                <p id="file-name" class="text-sm font-mono font-medium text-white truncate">sample.stl</p>
+                <p id="file-meta" class="text-xs text-slate-400 font-mono">0 KB • application/octet-stream</p>
+              </div>
+            </div>
+            <button id="btn-remove-file" type="button" class="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition z-20" title="ファイルを解除">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 2: Packaging Configuration Options -->
+      <section class="bg-surface-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="w-6 h-6 rounded-full bg-accent-500/20 text-accent-400 text-xs font-bold flex items-center justify-center border border-accent-500/30">2</span>
+            <h2 class="text-base font-semibold text-white">パッケージング構成設定</h2>
+          </div>
+          <span class="text-xs text-emerald-400 font-mono font-semibold">CORS & 文字化け完全防止</span>
+        </div>
+
+        <!-- Option Group 1: Bootloader Libraries -->
+        <div class="space-y-3">
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">1. ブートローダー基幹ランタイム (fflate & es-module-shims)</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="relative flex items-start p-3.5 rounded-xl border border-slate-700/80 bg-surface-850/60 hover:bg-surface-850 cursor-pointer transition group">
+              <input type="radio" name="bootloaderRuntime" value="cdn" checked class="mt-0.5 text-brand-500 focus:ring-brand-500 border-slate-700 bg-surface-900">
+              <div class="ml-3 text-xs">
+                <span class="font-medium text-white block group-hover:text-brand-400 transition">🌐 外部CDN読み込み (推奨)</span>
+                <span class="text-slate-400 mt-0.5 block leading-relaxed">HTMLヘッダに `&lt;script src="..."&gt;` を配置。ファイルサイズが最小。</span>
+              </div>
+            </label>
+
+            <label class="relative flex items-start p-3.5 rounded-xl border border-slate-700/80 bg-surface-850/60 hover:bg-surface-850 cursor-pointer transition group">
+              <input type="radio" name="bootloaderRuntime" value="inline" class="mt-0.5 text-brand-500 focus:ring-brand-500 border-slate-700 bg-surface-900">
+              <div class="ml-3 text-xs">
+                <span class="font-medium text-white block group-hover:text-brand-400 transition">🔒 完全インライン埋め込み</span>
+                <span class="text-slate-400 mt-0.5 block leading-relaxed">fflate と es-module-shims の最小コードをHTMLに内蔵。完全オフライン環境で動作。</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Option Group 2: Viewer Mode -->
+        <div class="space-y-3">
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">2. データビューアの選定</label>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <label class="relative flex items-start p-3 rounded-xl border border-slate-700/80 bg-surface-850/60 hover:bg-surface-850 cursor-pointer transition group">
+              <input type="radio" name="viewerMode" value="builtin" checked class="mt-0.5 text-brand-500 focus:ring-brand-500 border-slate-700 bg-surface-900">
+              <div class="ml-2.5 text-xs">
+                <span class="font-medium text-white block group-hover:text-brand-400 transition">自動判別ビューア</span>
+                <span class="text-slate-400 mt-0.5 block text-[11px]">拡張子に応じた内蔵ビューア（3D/表/Raw）を自動割当</span>
+              </div>
+            </label>
+
+            <label class="relative flex items-start p-3 rounded-xl border border-slate-700/80 bg-surface-850/60 hover:bg-surface-850 cursor-pointer transition group">
+              <input type="radio" name="viewerMode" value="cdnUrl" class="mt-0.5 text-brand-500 focus:ring-brand-500 border-slate-700 bg-surface-900">
+              <div class="ml-2.5 text-xs">
+                <span class="font-medium text-white block group-hover:text-brand-400 transition">Git / CDN ビューア</span>
+                <span class="text-slate-400 mt-0.5 block text-[11px]">GitHub Pages等のリモートJSモジュールURLを指定</span>
+              </div>
+            </label>
+
+            <label class="relative flex items-start p-3 rounded-xl border border-slate-700/80 bg-surface-850/60 hover:bg-surface-850 cursor-pointer transition group">
+              <input type="radio" name="viewerMode" value="custom" class="mt-0.5 text-brand-500 focus:ring-brand-500 border-slate-700 bg-surface-900">
+              <div class="ml-2.5 text-xs">
+                <span class="font-medium text-white block group-hover:text-brand-400 transition">カスタムJS同梱</span>
+                <span class="text-slate-400 mt-0.5 block text-[11px]">独自作成の viewer.js をZIP内に直接バンドル</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Remote CDN URL Input -->
+          <div id="panel-cdn-url" class="hidden mt-3 p-3.5 rounded-xl bg-surface-950 border border-slate-800 space-y-2">
+            <label class="text-xs font-mono text-slate-300">リモートビューア URL (ES Module)</label>
+            <input type="url" id="input-cdn-url" value="https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/jsm/loaders/STLLoader.js" class="w-full px-3 py-2 text-xs font-mono bg-surface-900 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-brand-500">
+            <p class="text-[11px] text-slate-500">※ `export function render(payload, context)` を持つESモジュールURLを指定</p>
+          </div>
+
+          <!-- Custom JS Editor Panel -->
+          <div id="panel-custom-editor" class="hidden mt-3 p-3.5 rounded-xl bg-surface-950 border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-mono text-slate-300 flex items-center space-x-1.5">
+                <i data-lucide="code" class="w-3.5 h-3.5 text-brand-400"></i>
+                <span>自作 viewer.js の定義</span>
+              </label>
+              
+              <div class="flex items-center space-x-2">
+                <select id="select-preset" class="text-xs bg-surface-900 border border-slate-700 rounded px-2 py-1 text-slate-300 focus:outline-none">
+                  <option value="stl">3D STLプリセット (Three.js)</option>
+                  <option value="vrm">VRMアバタービューア (@pixiv/three-vrm)</option>
+                  <option value="table">表・テキストビューア</option>
+                  <option value="raw">生バイナリ保存プリセット</option>
+                </select>
+                <label class="text-xs bg-surface-850 hover:bg-surface-800 border border-slate-700 px-2 py-1 rounded cursor-pointer text-slate-300 transition">
+                  <span>ファイル読込</span>
+                  <input type="file" id="viewerFileInput" accept=".js,.mjs,.ts" class="hidden">
+                </label>
+              </div>
+            </div>
+
+            <textarea id="custom-js-code" rows="8" class="code-editor w-full p-3 text-xs bg-surface-900/90 border border-slate-700/80 rounded-lg text-slate-200 focus:outline-none focus:border-brand-500 leading-relaxed font-mono resize-y"></textarea>
+          </div>
+        </div>
+
+        <!-- Option Group 3: Dependency Resolution -->
+        <div class="space-y-3 pt-2 border-t border-slate-800/80">
+          <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">3. 依存ライブラリの解決方法 (Three.js, SheetJS等)</label>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="relative flex items-start p-3.5 rounded-xl border border-slate-700/80 bg-surface-850/60 hover:bg-surface-850 cursor-pointer transition group">
+              <input type="radio" name="dependencyStrategy" value="cdn" checked class="mt-0.5 text-brand-500 focus:ring-brand-500 border-slate-700 bg-surface-900">
+              <div class="ml-3 text-xs">
+                <span class="font-medium text-white block group-hover:text-brand-400 transition">🌐 CDN importmap (標準)</span>
+                <span class="text-slate-400 mt-0.5 block leading-relaxed">`importmap.json` に CDN (esm.sh) のURLを記述。データ表示時にブラウザが必要な分だけ取得。</span>
+              </div>
+            </label>
+
+            <label class="relative flex items-start p-3.5 rounded-xl border border-slate-700/80 bg-surface-850/60 hover:bg-surface-850 cursor-pointer transition group">
+              <input type="radio" name="dependencyStrategy" value="bundle" class="mt-0.5 text-brand-500 focus:ring-brand-500 border-slate-700 bg-surface-900">
+              <div class="ml-3 text-xs">
+                <span class="font-medium text-white block group-hover:text-brand-400 transition">🔒 完全オフラインバンドル (全部入り)</span>
+                <span class="text-slate-400 mt-0.5 block leading-relaxed">生成時に依存モジュール実体をフェッチし、ZIP内の `/vendor` に密閉。完全オフライン環境で動作。</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Generate Button -->
+      <button id="btn-generate" class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-brand-500 to-accent-500 hover:from-brand-400 hover:to-accent-400 text-slate-950 font-bold text-base shadow-lg shadow-brand-500/20 active:scale-[0.99] transition duration-150 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed">
+        <i data-lucide="sparkles" class="w-5 h-5"></i>
+        <span>HTMLコンテナを生成・ダウンロード (Base64 Safe)</span>
+      </button>
+
+    </div>
+
+    <!-- Right Column: Status Console, Structure & Live Preview (5 cols) -->
+    <div class="lg:col-span-5 space-y-6">
+
+      <!-- Status & Progress Console -->
+      <section class="bg-surface-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col h-[320px]">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div class="flex items-center space-x-2">
+            <span class="relative flex h-2.5 w-2.5">
+              <span id="ping-indicator" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75 hidden"></span>
+              <span id="dot-indicator" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-500"></span>
+            </span>
+            <h3 class="text-xs font-mono font-semibold text-slate-300 uppercase tracking-wider">ビルドログ / コンソール</h3>
+          </div>
+          <button id="btn-clear-log" class="text-[11px] text-slate-500 hover:text-slate-300 font-mono transition">クリア</button>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="w-full bg-surface-950 h-2 rounded-full overflow-hidden my-3 border border-slate-800/80">
+          <div id="progress-bar" class="h-full bg-gradient-to-r from-brand-500 to-accent-400 transition-all duration-300 w-0"></div>
+        </div>
+
+        <!-- Terminal Output -->
+        <div id="log-console" class="flex-1 overflow-y-auto font-mono text-[11px] space-y-1.5 p-3 rounded-lg bg-surface-950 border border-slate-800/80 text-slate-400 leading-relaxed select-text">
+          <p class="text-slate-600">// HTMLContainer Builder Engine v2.0 (Base64 Safe Architecture)</p>
+          <p class="text-slate-500">待機中: ファイルをドロップしてパッケージングを開始してください。</p>
+        </div>
+      </section>
+
+      <!-- Binary Structure Inspector -->
+      <section class="bg-surface-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <h3 class="text-xs font-mono font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center space-x-1.5">
+          <i data-lucide="layers" class="w-4 h-4 text-brand-400"></i>
+          <span>格納構造 (Base64 インライン封入)</span>
+        </h3>
+
+        <div class="space-y-2 text-xs font-mono">
+          <!-- Head: HTML Shell -->
+          <div class="p-3 rounded-xl border border-brand-500/30 bg-brand-500/5 relative overflow-hidden">
+            <div class="flex items-center justify-between font-bold text-brand-400 mb-1">
+              <span>Bootloader HTML Shell</span>
+              <span id="badge-head-size" class="text-[10px] bg-brand-500/20 px-1.5 py-0.5 rounded">~2 KB</span>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              ブラウザ標準HTML。`fetch()` を一切使用せず、DOMからBase64を取得して `atob()` 復元するため、`file:///` ダブルクリックでもCORSエラーなく100%起動。
+            </p>
+          </div>
+
+          <!-- Script Tag Container -->
+          <div class="p-3 rounded-xl border border-accent-500/30 bg-accent-500/5 relative overflow-hidden">
+            <div class="flex items-center justify-between font-bold text-accent-400 mb-1">
+              <span>&lt;script id="container-zip-data" type="text/plain"&gt;</span>
+              <span id="badge-zip-size" class="text-[10px] bg-accent-500/20 px-1.5 py-0.5 rounded">0 KB</span>
+            </div>
+            <ul class="text-[11px] text-slate-400 space-y-1 list-disc list-inside mt-1">
+              <li><span class="text-slate-300" id="tree-data-file">payload.dat</span> (Base64エンコードZIP)</li>
+              <li><span class="text-slate-300">importmap.json</span> (動的依存関係マップ)</li>
+              <li><span class="text-slate-300">viewer.js</span> (ビューアエントリモジュール)</li>
+              <li id="tree-vendor-item" class="text-slate-500 italic hidden">/vendor/* (オフライン密閉ライブラリ)</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Testing Container In-browser Simulator -->
+      <section class="bg-surface-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-mono font-semibold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+            <i data-lucide="play-circle" class="w-4 h-4 text-emerald-400"></i>
+            <span>テストプレビュー</span>
+          </h3>
+          <span class="text-[11px] text-slate-500">ブラウザ内シミュレーション</span>
+        </div>
+        <p class="text-xs text-slate-400 mb-3">
+          生成された HTMLContainer をダウンロードする前に、ブラウザ内 iframe サンドボックスで自己展開とビューア実行をシミュレーションします。
+        </p>
+        <button id="btn-preview-container" disabled class="w-full py-2.5 px-4 rounded-xl border border-slate-700 bg-surface-850 hover:bg-surface-800 text-slate-300 text-xs font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center space-x-1.5">
+          <i data-lucide="external-link" class="w-4 h-4"></i>
+          <span>生成したコンテナをプレビュー再生</span>
+        </button>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- Explanation Footer / Philosophy -->
+  <footer id="how-it-works" class="border-t border-slate-800/80 bg-surface-900/60 mt-12 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 text-xs text-slate-400 space-y-4">
+      <div class="flex items-center space-x-2 text-slate-300 font-semibold text-sm">
+        <i data-lucide="shield-check" class="w-4 h-4 text-brand-400"></i>
+        <span>Specification.md 準拠仕様: CORS制限と文字化けの完全克服</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+        <div class="p-4 rounded-xl bg-surface-950/50 border border-slate-800">
+          <p class="font-bold text-white mb-1">1. file:/// ダブルクリック完全動作</p>
+          <p class="text-[11px] leading-relaxed">
+            従来の `fetch(window.location.href)` を撤廃。DOMの script タグからBase64をメモリにダイレクト読み込みするため、ローカルCORS制約に一切阻害されません。
+          </p>
+        </div>
+        <div class="p-4 rounded-xl bg-surface-950/50 border border-slate-800">
+          <p class="font-bold text-white mb-1">2. 文字化け・DOM漏れ出しゼロ</p>
+          <p class="text-[11px] leading-relaxed">
+            バイナリをBase64テキストとして `&lt;script type="text/plain"&gt;` 内に閉じ込めるため、ブラウザが誤って画面下部にゴミテキストを描画することが物理的にありません。
+          </p>
+        </div>
+        <div class="p-4 rounded-xl bg-surface-950/50 border border-slate-800">
+          <p class="font-bold text-white mb-1">3. 動的 importmap の自由度</p>
+          <p class="text-[11px] leading-relaxed">
+            `es-module-shims` により、ZIP内の `importmap.json` を解凍時に即時登録。最新Three.jsや自作ビューアも依存関係をクリーンに保ったままロードされます。
+          </p>
+        </div>
+      </div>
+      <p class="text-center text-slate-600 pt-4 font-mono">
+        HTMLContainer Builder v2.0 • Base64 Safe Inline Architecture
+      </p>
+    </div>
+  </footer>
+
+  <!-- Preview Modal Dialog -->
+  <div id="preview-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-surface-900 border border-slate-800 rounded-2xl w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-surface-850">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="play" class="w-4 h-4 text-brand-400"></i>
+          <span class="text-sm font-bold text-white font-mono" id="preview-title">Container Preview</span>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="btn-download-from-preview" class="px-3 py-1 text-xs bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold rounded-lg transition flex items-center space-x-1">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>保存</span>
+          </button>
+          <button id="btn-close-modal" class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+      <div class="flex-1 bg-black relative">
+        <iframe id="preview-iframe" class="w-full h-full border-none"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC -->
+  <script>
+    lucide.createIcons();
+
+    // -------------------------------------------------------------------------
+    // PRESET VIEWER SCRIPTS
+    // -------------------------------------------------------------------------
+    const PRESETS = {
+      // 3D STL Viewer using Three.js
+      stl: `import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+export async function render(dataBytes, context) {
+  const container = document.getElementById('viewer-root') || document.body;
+  container.style.margin = '0';
+  container.style.overflow = 'hidden';
+  container.style.background = '#0d1117';
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(100, 100, 100);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  container.appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+  hemiLight.position.set(0, 200, 0);
+  scene.add(hemiLight);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+  dirLight.position.set(100, 200, 100);
+  scene.add(dirLight);
+
+  const loader = new STLLoader();
+  const geometry = loader.parse(dataBytes.buffer);
+  geometry.computeVertexNormals();
+
+  const material = new THREE.MeshStandardMaterial({
+    color: 0x38bdf8,
+    metalness: 0.3,
+    roughness: 0.4
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+
+  geometry.center();
+  scene.add(mesh);
+
+  geometry.computeBoundingSphere();
+  const radius = geometry.boundingSphere.radius || 50;
+  camera.position.set(radius * 1.8, radius * 1.5, radius * 2.2);
+  camera.lookAt(0, 0, 0);
+  controls.target.set(0, 0, 0);
+
+  const grid = new THREE.GridHelper(radius * 3, 20, 0x334155, 0x1e293b);
+  grid.position.y = -radius;
+  scene.add(grid);
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+}`,
+
+      // Table & CSV/JSON Viewer
+      table: `export async function render(dataBytes, context) {
+  const container = document.getElementById('viewer-root') || document.body;
+  container.style.cssText = 'margin:0; background:#0f1117; color:#e2e8f0; font-family:sans-serif; height:100vh; display:flex; flex-direction:column; padding:20px; box-sizing:border-box;';
+
+  const text = new TextDecoder('utf-8').decode(dataBytes);
+  const lines = text.trim().split(/\\r?\\n/).map(l => l.split(','));
+
+  const header = lines[0] || [];
+  const rows = lines.slice(1);
+
+  container.innerHTML = \`
+    <div style="display:flex; justify-content:between; align-items:center; margin-bottom:12px;">
+      <h2 style="font-size:16px; font-weight:bold; color:#38bdf8; margin:0;">📄 \${context.fileName} (\${rows.length} records)</h2>
+    </div>
+    <div style="flex:1; overflow:auto; border:1px solid #334155; border-radius:8px;">
+      <table style="width:100%; border-collapse:collapse; font-size:12px; font-family:monospace;">
+        <thead style="background:#1e293b; position:sticky; top:0;">
+          <tr>
+            \${header.map(h => \`<th style="padding:8px 12px; text-align:left; border-bottom:1px solid #475569; color:#94a3b8;">\${h}</th>\`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          \${rows.map(r => \`
+            <tr style="border-bottom:1px solid #1e293b;">
+              \${r.map(c => \`<td style="padding:6px 12px; color:#cbd5e1;">\${c}</td>\`).join('')}
+            </tr>
+          \`).join('')}
+        </tbody>
+      </table>
+    </div>
+  \`;
+}`,
+
+      // VRM Avatar Viewer (Three.js + @pixiv/three-vrm + GLTFLoader)
+      vrm: `import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+export async function render(dataBytes, context) {
+  const container = document.getElementById('viewer-root') || document.body;
+  container.innerHTML = '';
+  container.style.cssText = 'margin:0; overflow:hidden; background:radial-gradient(circle at 50% 30%, #1e293b 0%, #090d16 100%); width:100vw; height:100vh; position:relative;';
+
+  // 1. Loading Indicator
+  const loading = document.createElement('div');
+  loading.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#38bdf8; font-family:sans-serif; font-size:13px; background:rgba(15,23,42,0.88); padding:16px 24px; border-radius:12px; border:1px solid #334155; display:flex; align-items:center; gap:12px; z-index:100; backdrop-filter:blur(8px); box-shadow:0 10px 25px rgba(0,0,0,0.5);';
+  loading.innerHTML = '<span style="display:inline-block; width:18px; height:18px; border:2px solid #38bdf8; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></span><span>VRMアバターを解析・構築中...</span><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+  container.appendChild(loading);
+
+  // 2. VRM Meta HUD Overlay
+  const hud = document.createElement('div');
+  hud.style.cssText = 'position:absolute; top:16px; left:16px; color:#e2e8f0; font-family:sans-serif; background:rgba(15,23,42,0.8); padding:14px 18px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); font-size:12px; z-index:20; backdrop-filter:blur(8px); line-height:1.6; max-width:340px; box-shadow:0 8px 20px rgba(0,0,0,0.3);';
+  hud.innerHTML = \`<div style="font-weight:bold; color:#38bdf8; font-size:14px; margin-bottom:4px; display:flex; align-items:center; gap:6px;"><span>✨</span><span>\${context.fileName}</span></div><div id="vrm-meta-body" style="color:#94a3b8;">ロード待機中...</div>\`;
+  container.appendChild(hud);
+
+  // 3. Setup Three.js Scene, Camera, Renderer
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(32.0, window.innerWidth / window.innerHeight, 0.1, 50.0);
+  camera.position.set(0.0, 1.4, 2.5);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  container.appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.target.set(0.0, 1.1, 0.0);
+  controls.update();
+
+  // 4. Studio Lighting Setup
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 1.2);
+  hemiLight.position.set(0, 20, 0);
+  scene.add(hemiLight);
+
+  const mainLight = new THREE.DirectionalLight(0xffffff, 1.8);
+  mainLight.position.set(1.5, 3.5, 2.5);
+  scene.add(mainLight);
+
+  const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.9);
+  fillLight.position.set(-1.8, 2.0, -1.5);
+  scene.add(fillLight);
+
+  const backLight = new THREE.DirectionalLight(0xa855f7, 0.6);
+  backLight.position.set(0.0, 3.0, -3.0);
+  scene.add(backLight);
+
+  // 5. Floor Grid
+  const gridHelper = new THREE.GridHelper(10, 20, 0x475569, 0x1e293b);
+  gridHelper.position.y = 0;
+  scene.add(gridHelper);
+
+  // 6. Parse and Load VRM from memory dataBytes
+  const loader = new GLTFLoader();
+  loader.register((parser) => new VRMLoaderPlugin(parser));
+
+  let currentVrm = null;
+  const clock = new THREE.Clock();
+
+  try {
+    const gltf = await new Promise((resolve, reject) => {
+      loader.parse(dataBytes.buffer, '', resolve, reject);
+    });
+
+    const vrm = gltf.userData.vrm;
+    if (!vrm) {
+      throw new Error('VRMメタデータが検出されませんでした。標準glTFとして描画します。');
+    }
+
+    currentVrm = vrm;
+    VRMUtils.removeUnnecessaryVertices(gltf.scene);
+    VRMUtils.removeUnnecessaryJoints(gltf.scene);
+
+    // VRM0.0互換向き調整
+    if (vrm.meta?.metaVersion === '0' || !vrm.meta?.metaVersion) {
+      VRMUtils.rotateVRM0(vrm);
+    }
+
+    scene.add(vrm.scene);
+
+    // Extract Meta Information
+    const meta = vrm.meta || {};
+    const title = meta.name || meta.title || context.fileName;
+    const author = meta.authors ? (Array.isArray(meta.authors) ? meta.authors.join(', ') : meta.authors) : (meta.author || '未設定');
+    const version = meta.version || (meta.metaVersion === '0' ? 'VRM 0.0' : 'VRM 1.0');
+    
+    const metaBodyEl = document.getElementById('vrm-meta-body');
+    if (metaBodyEl) {
+      metaBodyEl.innerHTML = \`
+        <div>モデル名: <span style="color:#f1f5f9; font-weight:500;">\${title}</span></div>
+        <div>作者: <span style="color:#f1f5f9; font-weight:500;">\${author}</span></div>
+        <div>規格: <span style="color:#38bdf8;">\${version}</span></div>
+        <div style="margin-top:6px; font-size:11px; color:#64748b; border-top:1px solid #334155; padding-top:4px;">
+          左ドラッグ: 回転 / 右ドラッグ: 平行移動 / ホイール: ズーム
+        </div>
+      \`;
+    }
+
+    // Auto Camera Framing based on Bounding Box
+    const box = new THREE.Box3().setFromObject(vrm.scene);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const headY = Math.max(0.8, center.y + size.y * 0.3);
+    controls.target.set(0, headY, 0);
+    camera.position.set(0, headY, Math.max(1.8, size.y * 1.4));
+    controls.update();
+
+    // Natural Relaxed Pose (lower arms slightly from T-Pose)
+    const humanoid = vrm.humanoid;
+    if (humanoid) {
+      const isVRM0 = (vrm.meta?.metaVersion === '0' || !vrm.meta?.metaVersion);
+      const sign = isVRM0 ? 1 : -1;
+      const leftUpperArm = humanoid.getNormalizedBoneNode('leftUpperArm');
+      const rightUpperArm = humanoid.getNormalizedBoneNode('rightUpperArm');
+      if (leftUpperArm) leftUpperArm.rotation.z = sign * (Math.PI / 2.6);
+      if (rightUpperArm) rightUpperArm.rotation.z = -sign * (Math.PI / 2.6);
+    }
+
+    loading.style.display = 'none';
+
+  } catch (err) {
+    console.error('VRM解析警告/エラー:', err);
+    loading.innerHTML = \`<span style="color:#f87171">⚠️ \${err.message}</span>\`;
+    setTimeout(() => { loading.style.display = 'none'; }, 4000);
+
+    // Fallback: render raw gltf scene if available
+    if (!currentVrm && typeof gltf !== 'undefined' && gltf && gltf.scene) {
+      scene.add(gltf.scene);
+    }
+  }
+
+  // 7. Natural Breathing & Blinking Animation Loop
+  let blinkTimer = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    const delta = clock.getDelta();
+    const t = clock.getElapsedTime();
+
+    if (currentVrm) {
+      currentVrm.update(delta);
+
+      // Natural Breathing (subtle spine/chest sway)
+      const chest = currentVrm.humanoid?.getNormalizedBoneNode('chest') || currentVrm.humanoid?.getNormalizedBoneNode('spine');
+      if (chest) {
+        chest.rotation.x = Math.sin(t * 1.8) * 0.02;
+      }
+
+      // Natural Blinking every ~3.5s
+      blinkTimer += delta;
+      if (blinkTimer > 3.5) {
+        const blinkVal = Math.sin(Math.min((blinkTimer - 3.5) * 12.0, Math.PI));
+        if (currentVrm.expressionManager) {
+          currentVrm.expressionManager.setValue('blink', Math.max(0, blinkVal));
+        }
+        if (blinkTimer > 3.8) {
+          blinkTimer = 0;
+          if (currentVrm.expressionManager) {
+            currentVrm.expressionManager.setValue('blink', 0);
+          }
+        }
+      }
+    }
+
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // Resize handler
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+}`,
+
+      // Fallback Raw Data Viewer
+      raw: `export async function render(dataBytes, context) {
+  const container = document.getElementById('viewer-root') || document.body;
+  container.style.cssText = 'margin:0; background:#0b0f19; color:#f8fafc; font-family:sans-serif; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center;';
+
+  container.innerHTML = \`
+    <div style="background:#1e293b; border:1px solid #334155; padding:32px; border-radius:16px; text-align:center; max-width:440px;">
+      <div style="font-size:48px; margin-bottom:12px;">📦</div>
+      <h2 style="font-size:18px; margin:0 0 8px 0; color:#38bdf8;">\${context.fileName}</h2>
+      <p style="font-size:12px; color:#94a3b8; margin:0 0 20px 0;">ファイルサイズ: \${(dataBytes.byteLength / 1024).toFixed(1)} KB</p>
+      <button id="btn-save-payload" style="background:#22c55e; color:#052e16; font-weight:bold; border:none; padding:10px 24px; border-radius:8px; cursor:pointer; font-size:14px;">
+        💾 元データを取り出して保存
+      </button>
+    </div>
+  \`;
+
+  document.getElementById('btn-save-payload').onclick = () => {
+    const blob = new Blob([dataBytes]);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = context.fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+}`
+    };
+
+    // -------------------------------------------------------------------------
+    // APPLICATION STATE & DOM REFERENCES
+    // -------------------------------------------------------------------------
+    let currentPayload = null;
+    let generatedContainerHtml = null;
+    let cachedFflateMinJs = null;
+    let cachedEsModuleShimsJs = null;
+
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const dropzoneEmpty = document.getElementById('dropzone-empty');
+    const dropzoneLoaded = document.getElementById('dropzone-loaded');
+    const fileNameEl = document.getElementById('file-name');
+    const fileMetaEl = document.getElementById('file-meta');
+    const btnRemoveFile = document.getElementById('btn-remove-file');
+    const btnQuickSampleStl = document.getElementById('btn-quick-sample-stl');
+    const btnQuickSampleVrm = document.getElementById('btn-quick-sample-vrm');
+
+    const panelCdnUrl = document.getElementById('panel-cdn-url');
+    const panelCustomEditor = document.getElementById('panel-custom-editor');
+    const customJsCodeEl = document.getElementById('custom-js-code');
+    const selectPreset = document.getElementById('select-preset');
+    const viewerFileInput = document.getElementById('viewerFileInput');
+
+    const btnGenerate = document.getElementById('btn-generate');
+    const logConsole = document.getElementById('log-console');
+    const progressBar = document.getElementById('progress-bar');
+    const dotIndicator = document.getElementById('dot-indicator');
+    const pingIndicator = document.getElementById('ping-indicator');
+
+    const badgeHeadSize = document.getElementById('badge-head-size');
+    const badgeZipSize = document.getElementById('badge-zip-size');
+    const treeDataFile = document.getElementById('tree-data-file');
+    const treeVendorItem = document.getElementById('tree-vendor-item');
+    const btnPreviewContainer = document.getElementById('btn-preview-container');
+
+    const previewModal = document.getElementById('preview-modal');
+    const previewIframe = document.getElementById('preview-iframe');
+    const btnCloseModal = document.getElementById('btn-close-modal');
+    const btnDownloadFromPreview = document.getElementById('btn-download-from-preview');
+
+    customJsCodeEl.value = PRESETS.stl;
+
+    // -------------------------------------------------------------------------
+    // LOGGING UTILITIES
+    // -------------------------------------------------------------------------
+    function log(message, type = 'info') {
+      const p = document.createElement('p');
+      const time = new Date().toLocaleTimeString('ja-JP', { hour12: false });
+      let colorClass = 'text-slate-300';
+      if (type === 'success') colorClass = 'text-brand-400 font-semibold';
+      if (type === 'warn') colorClass = 'text-amber-400';
+      if (type === 'error') colorClass = 'text-rose-400 font-semibold';
+      if (type === 'progress') colorClass = 'text-accent-400';
+
+      p.className = colorClass;
+      p.innerHTML = `<span class="text-slate-600">[${time}]</span> ${message}`;
+      logConsole.appendChild(p);
+      logConsole.scrollTop = logConsole.scrollHeight;
+    }
+
+    function setProgress(percent, active = true) {
+      progressBar.style.width = `${percent}%`;
+      if (active) {
+        dotIndicator.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-400';
+        pingIndicator.classList.remove('hidden');
+      } else {
+        dotIndicator.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-500';
+        pingIndicator.classList.add('hidden');
+      }
+    }
+
+    document.getElementById('btn-clear-log').addEventListener('click', () => {
+      logConsole.innerHTML = '<p class="text-slate-600">// Console cleared.</p>';
+    });
+
+    // -------------------------------------------------------------------------
+    // FILE HANDLING & DRAG & DROP
+    // -------------------------------------------------------------------------
+    function handleFile(file) {
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        currentPayload = {
+          name: file.name,
+          size: file.size,
+          type: file.type || 'application/octet-stream',
+          buffer: new Uint8Array(e.target.result)
+        };
+
+        fileNameEl.textContent = file.name;
+        fileMetaEl.textContent = `${(file.size / 1024).toFixed(1)} KB • ${file.type || 'binary'}`;
+        dropzoneEmpty.classList.add('hidden');
+        dropzoneLoaded.classList.remove('hidden');
+        treeDataFile.textContent = file.name;
+        badgeZipSize.textContent = `~${(file.size / 1024).toFixed(1)} KB`;
+
+        log(`ペイロード受領: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`, 'success');
+
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext === 'stl') selectPreset.value = 'stl';
+        else if (['csv', 'txt', 'json', 'tsv'].includes(ext)) selectPreset.value = 'table';
+        else if (ext === 'vrm') {
+          selectPreset.value = 'vrm';
+          log('✨ VRMアバター検出: @pixiv/three-vrm ビューアを自動適用します。', 'progress');
+        }
+        else selectPreset.value = 'raw';
+        customJsCodeEl.value = PRESETS[selectPreset.value];
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    btnRemoveFile.addEventListener('click', (e) => {
+      e.stopPropagation();
+      currentPayload = null;
+      fileInput.value = '';
+      dropzoneLoaded.classList.add('hidden');
+      dropzoneEmpty.classList.remove('hidden');
+      treeDataFile.textContent = 'payload.dat';
+      badgeZipSize.textContent = '0 KB';
+      btnPreviewContainer.disabled = true;
+      log('ペイロードファイルを解除しました。');
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('border-brand-500', 'bg-surface-850');
+      });
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('border-brand-500', 'bg-surface-850');
+      });
+    });
+    dropzone.addEventListener('drop', (e) => {
+      if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    });
+
+    // Quick Sample STL
+    btnQuickSampleStl.addEventListener('click', () => {
+      const stlContent = `solid sample_pyramid
+facet normal 0 0 -1
+  outer loop
+    vertex -20 -20 0
+    vertex 20 -20 0
+    vertex 20 20 0
+  endloop
+endfacet
+facet normal 0 0 -1
+  outer loop
+    vertex -20 -20 0
+    vertex 20 20 0
+    vertex -20 20 0
+  endloop
+endfacet
+facet normal 0 -0.89 0.44
+  outer loop
+    vertex -20 -20 0
+    vertex 0 0 30
+    vertex 20 -20 0
+  endloop
+endfacet
+facet normal 0.89 0 0.44
+  outer loop
+    vertex 20 -20 0
+    vertex 0 0 30
+    vertex 20 20 0
+  endloop
+endfacet
+facet normal 0 0.89 0.44
+  outer loop
+    vertex 20 20 0
+    vertex 0 0 30
+    vertex -20 20 0
+  endloop
+endfacet
+facet normal -0.89 0.44
+  outer loop
+    vertex -20 -20 0
+    vertex 0 0 30
+    vertex -20 -20 0
+  endloop
+endfacet
+endsolid sample_pyramid`;
+
+      const encoder = new TextEncoder();
+      const buffer = encoder.encode(stlContent);
+      const file = new File([buffer], 'pyramid_demo.stl', { type: 'model/stl' });
+      handleFile(file);
+      log('3D STLサンプルデータを読み込みました');
+    });
+
+    // Quick Sample VRM Avatar
+    btnQuickSampleVrm.addEventListener('click', async () => {
+      log('VRMサンプルアバターを取得中...', 'progress');
+      setProgress(20, true);
+      try {
+        let res;
+        try {
+          res = await fetch('./sample_avatar.vrm');
+          if (!res.ok) throw new Error('Local sample not available');
+        } catch {
+          log('CDNから公式VRMサンプルを取得中 (約10MB)...', 'progress');
+          res = await fetch('https://cdn.jsdelivr.net/gh/pixiv/three-vrm@release/packages/three-vrm/examples/models/VRM1_Constraint_Twist_Sample.vrm');
+        }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        
+        setProgress(70);
+        const blob = await res.blob();
+        const file = new File([blob], 'Avatar_Sample.vrm', { type: 'model/gltf-binary' });
+        setProgress(100);
+        setTimeout(() => setProgress(0, false), 400);
+
+        handleFile(file);
+        log('✨ VRMサンプルアバター (Avatar_Sample.vrm) のロード完了！', 'success');
+      } catch (err) {
+        console.error(err);
+        log('VRMサンプル取得失敗: ' + err.message, 'error');
+        setProgress(0, false);
+      }
+    });
+
+    // -------------------------------------------------------------------------
+    // RADIO / OPTION TOGGLES
+    // -------------------------------------------------------------------------
+    document.querySelectorAll('input[name="viewerMode"]').forEach(r => {
+      r.addEventListener('change', (e) => {
+        panelCdnUrl.classList.toggle('hidden', e.target.value !== 'cdnUrl');
+        panelCustomEditor.classList.toggle('hidden', e.target.value !== 'custom');
+      });
+    });
+
+    selectPreset.addEventListener('change', (e) => {
+      customJsCodeEl.value = PRESETS[e.target.value] || PRESETS.raw;
+    });
+
+    viewerFileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        const f = e.target.files[0];
+        const r = new FileReader();
+        r.onload = (ev) => {
+          customJsCodeEl.value = ev.target.result;
+          log(`カスタムビューア読込完了: ${f.name}`);
+        };
+        r.readAsText(f);
+      }
+    });
+
+    document.querySelectorAll('input[name="dependencyStrategy"]').forEach(r => {
+      r.addEventListener('change', (e) => {
+        treeVendorItem.classList.toggle('hidden', e.target.value !== 'bundle');
+      });
+    });
+
+    document.querySelectorAll('input[name="bootloaderRuntime"]').forEach(r => {
+      r.addEventListener('change', (e) => {
+        badgeHeadSize.textContent = e.target.value === 'inline' ? '~45 KB' : '~2 KB';
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // CHUNKED BASE64 CONVERTER (Safe for Multi-Megabyte buffers)
+    // -------------------------------------------------------------------------
+    function uint8ToBase64(uint8) {
+      let binary = '';
+      const chunkSize = 0x8000; // 32KB chunks prevent call stack overflow
+      for (let i = 0; i < uint8.length; i += chunkSize) {
+        const chunk = uint8.subarray(i, i + chunkSize);
+        binary += String.fromCharCode.apply(null, chunk);
+      }
+      return btoa(binary);
+    }
+
+    // -------------------------------------------------------------------------
+    // BOOTLOADER HTML GENERATOR (Base64 Safe - No fetch()!)
+    // -------------------------------------------------------------------------
+    function generateBootloaderHTML(options) {
+      const { inlineRuntime, fflateSrc, esModuleShimsSrc, zipBase64 } = options;
+
+      let runtimeScripts = '';
+      if (inlineRuntime && fflateSrc && esModuleShimsSrc) {
+        const safeFflate = fflateSrc.replace(/<\/script/gi, '<\\/script');
+        const safeShims = esModuleShimsSrc.replace(/<\/script/gi, '<\\/script');
+        runtimeScripts = `
+  <!-- es-module-shims: shimMode must be enabled BEFORE loading to allow dynamic addImportMap -->
+  <script type="esms-options">{"shimMode":true}<\/script>
+  <script>window.esmsInitOptions = { shimMode: true };<\/script>
+  <!-- Inlined fflate decompression engine -->
+  <script>${safeFflate}<\/script>
+  <!-- Inlined es-module-shims runtime -->
+  <script>${safeShims}<\/script>`;
+      } else {
+        runtimeScripts = `
+  <!-- es-module-shims: shimMode must be enabled BEFORE loading to allow dynamic addImportMap -->
+  <script type="esms-options">{"shimMode":true}<\/script>
+  <script>window.esmsInitOptions = { shimMode: true };<\/script>
+  <!-- Standalone CDN Bootloader -->
+  <script src="https://unpkg.com/fflate@0.8.2/umd/index.js"><\/script>
+  <script src="https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js"><\/script>`;
+      }
+
+      return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTMLContainer</title>${runtimeScripts}
+  <style>
+    body {
+      margin: 0;
+      background: #090a0f;
+      color: #cbd5e1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #boot-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #090a0f;
+      z-index: 9999;
+      transition: opacity 0.4s ease;
+    }
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 3px solid rgba(56, 189, 248, 0.2);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #boot-status {
+      margin-top: 16px;
+      font-family: monospace;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    #export-bar {
+      position: fixed;
+      bottom: 12px;
+      right: 12px;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+      backdrop-filter: blur(8px);
+      border-radius: 8px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    #export-bar button {
+      background: #22c55e;
+      color: #052e16;
+      border: none;
+      font-weight: bold;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #viewer-root {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="boot-overlay">
+    <div class="spinner"></div>
+    <div id="boot-status">📦 解凍中 (Unpacking Container)...</div>
+  </div>
+
+  <div id="viewer-root"></div>
+
+  <div id="export-bar">
+    <span id="export-filename">データコンテナ</span>
+    <button id="btn-save-original">💾 生ファイル抽出</button>
+  </div>
+
+  <!-- ZIP Archive encoded in safe Base64 text (Bypasses file:/// CORS & text node leakage) -->
+  <script id="container-zip-data" type="text/plain">${zipBase64}<\/script>
+
+  <script type="module">
+    // Convert Base64 back to Uint8Array safely without network requests
+    function base64ToUint8(base64) {
+      const binStr = atob(base64);
+      const len = binStr.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binStr.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    async function bootContainer() {
+      const statusEl = document.getElementById('boot-status');
+      const overlayEl = document.getElementById('boot-overlay');
+
+      try {
+        statusEl.textContent = '📦 メモリからBase64を取得中...';
+        const zipScriptNode = document.getElementById('container-zip-data');
+        if (!zipScriptNode) throw new Error('ZIPデータブロックが見つかりません');
+
+        const base64Str = zipScriptNode.textContent.trim();
+        statusEl.textContent = '🔓 ZIPアーカイブ解凍中...';
+        
+        // Decode and Unzip directly from in-memory string
+        const zipUint8 = base64ToUint8(base64Str);
+        const files = fflate.unzipSync(zipUint8);
+
+        // Wait for es-module-shims to be fully initialized
+        const maxWait = 4000;
+        const startWait = Date.now();
+        while (!window.importShim && (Date.now() - startWait < maxWait)) {
+          await new Promise(r => setTimeout(r, 20));
+        }
+        if (!window.importShim) {
+          throw new Error('es-module-shims の初期化に失敗しました');
+        }
+
+        // Dynamically register importmap with es-module-shims
+        if (files['importmap.json']) {
+          const mapJson = JSON.parse(fflate.strFromU8(files['importmap.json']));
+          if (mapJson.imports) {
+            // Map bundled vendor files into in-memory Blob URLs for offline execution
+            for (const [key, target] of Object.entries(mapJson.imports)) {
+              const cleanTarget = target.replace(/^\\.\\//, '');
+              if (files[cleanTarget]) {
+                const blob = new Blob([files[cleanTarget]], { type: 'text/javascript' });
+                mapJson.imports[key] = URL.createObjectURL(blob);
+              }
+            }
+          }
+          if (importShim.addImportMap) {
+            importShim.addImportMap(mapJson);
+          }
+        }
+
+        // Setup re-export button
+        const manifest = files['manifest.json'] ? JSON.parse(fflate.strFromU8(files['manifest.json'])) : {};
+        const payloadName = manifest.payloadName || Object.keys(files).find(k => !['importmap.json', 'viewer.js', 'manifest.json'].includes(k) && !k.startsWith('vendor/'));
+        
+        if (payloadName && files[payloadName]) {
+          document.getElementById('export-filename').textContent = payloadName;
+          document.getElementById('btn-save-original').onclick = () => {
+            const blob = new Blob([files[payloadName]]);
+            const dl = document.createElement('a');
+            dl.href = URL.createObjectURL(blob);
+            dl.download = payloadName;
+            dl.click();
+          };
+        }
+
+        // Launch Viewer
+        statusEl.textContent = '🚀 ビューア起動中...';
+        let viewerModule;
+        if (manifest.viewerUrl) {
+          viewerModule = await importShim(manifest.viewerUrl);
+        } else if (files['viewer.js']) {
+          const blob = new Blob([files['viewer.js']], { type: 'text/javascript' });
+          const blobUrl = URL.createObjectURL(blob);
+          viewerModule = await importShim(blobUrl);
+        } else {
+          throw new Error('ビューアモジュールが見つかりません');
+        }
+
+        if (viewerModule && viewerModule.render) {
+          const payloadBytes = payloadName ? files[payloadName] : new Uint8Array(0);
+          await viewerModule.render(payloadBytes, {
+            fileName: payloadName,
+            allFiles: files,
+            manifest: manifest
+          });
+        }
+
+        overlayEl.style.opacity = '0';
+        setTimeout(() => overlayEl.remove(), 400);
+
+      } catch (err) {
+        console.error('Bootloader execution failed:', err);
+        statusEl.innerHTML = '<span style="color:#f87171">起動失敗: ' + err.message + '</span>';
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(bootContainer, 50);
+    });
+  <\/script>
+</body>
+</html>
+`;
+    }
+
+    // -------------------------------------------------------------------------
+    // BUILD & GENERATION ENGINE
+    // -------------------------------------------------------------------------
+    async function fetchWithTimeout(url, timeoutMs = 12000) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(id);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
+      return res;
+    }
+
+    async function fetchStandaloneBundle(url, timeoutMs = 15000) {
+      const res = await fetchWithTimeout(url, timeoutMs);
+      let text = await res.text();
+      // esm.sh bundle wrapper pattern: export * from "/..."
+      const match = text.match(/export\s+\*\s+from\s+["'](\/[^"']+)["']/);
+      if (match) {
+        const fullUrl = new URL(match[1], url).href;
+        const subRes = await fetchWithTimeout(fullUrl, timeoutMs);
+        text = await subRes.text();
+      }
+      return text;
+    }
+
+    async function buildContainer() {
+      if (!currentPayload) {
+        log('エラー: データファイルが選択されていません！', 'error');
+        return;
+      }
+
+      btnGenerate.disabled = true;
+      setProgress(5, true);
+      log('--- コンテナ生成プロセス開始 (Specification 準拠) ---', 'progress');
+
+      try {
+        const bootloaderRuntime = document.querySelector('input[name="bootloaderRuntime"]:checked').value;
+        const viewerMode = document.querySelector('input[name="viewerMode"]:checked').value;
+        const dependencyStrategy = document.querySelector('input[name="dependencyStrategy"]:checked').value;
+
+        // 1. Fetch Inlining Code if needed
+        let inlinedFflate = '';
+        let inlinedShims = '';
+        if (bootloaderRuntime === 'inline') {
+          log('インライン用ランタイム (fflate & es-module-shims) を取得中...');
+          setProgress(15);
+          
+          if (!cachedFflateMinJs) {
+            const res = await fetchWithTimeout('https://unpkg.com/fflate@0.8.2/umd/index.js');
+            cachedFflateMinJs = await res.text();
+          }
+          inlinedFflate = cachedFflateMinJs;
+
+          if (!cachedEsModuleShimsJs) {
+            const res = await fetchWithTimeout('https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js');
+            cachedEsModuleShimsJs = await res.text();
+          }
+          inlinedShims = cachedEsModuleShimsJs;
+          log('ランタイムのインライン取得完了', 'success');
+        }
+
+        // 2. Prepare ZIP Structure
+        const zipArchive = {};
+        const ext = currentPayload.name.split('.').pop().toLowerCase();
+        zipArchive[currentPayload.name] = currentPayload.buffer;
+
+        // 3. Determine Viewer Script & Manifest
+        const manifest = {
+          version: '2.0.0',
+          format: 'R3A-Base64',
+          payloadName: currentPayload.name,
+          createdDate: new Date().toISOString()
+        };
+
+        let importMap = { imports: {} };
+
+        if (viewerMode === 'cdnUrl') {
+          const url = document.getElementById('input-cdn-url').value.trim();
+          manifest.viewerUrl = url;
+          log(`リモートビューア指定: ${url}`);
+        } else {
+          let viewerCode = '';
+          if (viewerMode === 'builtin') {
+            if (ext === 'stl') viewerCode = PRESETS.stl;
+            else if (['csv', 'txt', 'json'].includes(ext)) viewerCode = PRESETS.table;
+            else if (ext === 'vrm') viewerCode = PRESETS.vrm;
+            else viewerCode = PRESETS.raw;
+            log(`内蔵ビューア割当: [${ext.toUpperCase()}]`);
+          } else {
+            viewerCode = customJsCodeEl.value;
+            log('ユーザー定義のカスタム viewer.js を使用');
+          }
+          zipArchive['viewer.js'] = fflate.strToU8(viewerCode);
+        }
+
+        // 4. Handle Dependency Resolution (CDN vs Full Offline Bundle)
+        setProgress(40);
+        if (dependencyStrategy === 'bundle') {
+          log('🔒 密閉モード: 外部依存ライブラリ実体をバンドル取得中...');
+          try {
+            log('Three.js コア (unpkg) をフェッチ中...');
+            const threeRes = await fetchWithTimeout('https://unpkg.com/three@0.160.0/build/three.module.js');
+            zipArchive['vendor/three.js'] = fflate.strToU8(await threeRes.text());
+            
+            log('OrbitControls (unpkg) をフェッチ中...');
+            const controlsRes = await fetchWithTimeout('https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js');
+            zipArchive['vendor/OrbitControls.js'] = fflate.strToU8(await controlsRes.text());
+
+            importMap.imports['three'] = './vendor/three.js';
+            importMap.imports['three/addons/controls/OrbitControls.js'] = './vendor/OrbitControls.js';
+
+            if (ext === 'stl' || (viewerMode === 'custom' && customJsCodeEl.value.includes('STLLoader'))) {
+              log('STLLoader (unpkg) をフェッチ中...');
+              const stlRes = await fetchWithTimeout('https://unpkg.com/three@0.160.0/examples/jsm/loaders/STLLoader.js');
+              zipArchive['vendor/STLLoader.js'] = fflate.strToU8(await stlRes.text());
+              importMap.imports['three/addons/loaders/STLLoader.js'] = './vendor/STLLoader.js';
+            }
+
+            if (ext === 'vrm' || (viewerMode === 'custom' && customJsCodeEl.value.includes('three-vrm'))) {
+              log('GLTFLoader (unpkg) をフェッチ中...');
+              const gltfRes = await fetchWithTimeout('https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js');
+              zipArchive['vendor/GLTFLoader.js'] = fflate.strToU8(await gltfRes.text());
+              importMap.imports['three/addons/loaders/GLTFLoader.js'] = './vendor/GLTFLoader.js';
+
+              log('@pixiv/three-vrm (unpkg) をフェッチ中...');
+              const vrmRes = await fetchWithTimeout('https://unpkg.com/@pixiv/three-vrm@2.1.3/lib/three-vrm.module.js');
+              zipArchive['vendor/three-vrm.js'] = fflate.strToU8(await vrmRes.text());
+              importMap.imports['@pixiv/three-vrm'] = './vendor/three-vrm.js';
+            }
+
+            log('依存モジュールのオフライン内包完了 (vendor/)', 'success');
+          } catch (netErr) {
+            log('ライブラリのオフライン取得警告: ' + netErr.message + ' (CDNフォールバックを使用)', 'warn');
+            importMap.imports['three'] = 'https://unpkg.com/three@0.160.0/build/three.module.js';
+            importMap.imports['three/addons/'] = 'https://unpkg.com/three@0.160.0/examples/jsm/';
+            importMap.imports['three/addons/controls/OrbitControls.js'] = 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+            importMap.imports['three/addons/loaders/STLLoader.js'] = 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/STLLoader.js';
+            importMap.imports['three/addons/loaders/GLTFLoader.js'] = 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+            importMap.imports['@pixiv/three-vrm'] = 'https://unpkg.com/@pixiv/three-vrm@2.1.3/lib/three-vrm.module.js';
+          }
+        } else {
+          importMap.imports['three'] = 'https://unpkg.com/three@0.160.0/build/three.module.js';
+          importMap.imports['three/addons/'] = 'https://unpkg.com/three@0.160.0/examples/jsm/';
+          importMap.imports['three/addons/controls/OrbitControls.js'] = 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+          importMap.imports['three/addons/loaders/STLLoader.js'] = 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/STLLoader.js';
+          importMap.imports['three/addons/loaders/GLTFLoader.js'] = 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+          importMap.imports['@pixiv/three-vrm'] = 'https://unpkg.com/@pixiv/three-vrm@2.1.3/lib/three-vrm.module.js';
+        }
+
+        zipArchive['importmap.json'] = fflate.strToU8(JSON.stringify(importMap, null, 2));
+        zipArchive['manifest.json'] = fflate.strToU8(JSON.stringify(manifest, null, 2));
+
+        // 5. Compress ZIP Buffer
+        setProgress(65);
+        log('📦 ZIP書庫を圧縮エンコード中 (Deflate level 6)...');
+        const zipBytes = fflate.zipSync(zipArchive, { level: 6 });
+        log(`ZIPアーカイブ作成成功: ${(zipBytes.byteLength / 1024).toFixed(1)} KB`);
+
+        // 6. Base64 Safe Encoding (Prevents text node leak and CORS errors)
+        setProgress(80);
+        log('🔒 Base64 エンコード中 (CORS & 文字化け完全防止)...');
+        const zipBase64 = uint8ToBase64(zipBytes);
+
+        // 7. Generate Complete HTML Document
+        setProgress(90);
+        generatedContainerHtml = generateBootloaderHTML({
+          inlineRuntime: bootloaderRuntime === 'inline',
+          fflateSrc: inlinedFflate,
+          esModuleShimsSrc: inlinedShims,
+          zipBase64: zipBase64
+        });
+
+        const totalBytes = new TextEncoder().encode(generatedContainerHtml).byteLength;
+        setProgress(100, false);
+        log(`🎉 生成完了！ 総ファイルサイズ: ${(totalBytes / 1024).toFixed(1)} KB (file:/// 動作保証)`, 'success');
+
+        // Trigger Download
+        const blob = new Blob([generatedContainerHtml], { type: 'text/html;charset=utf-8' });
+        const downloadUrl = URL.createObjectURL(blob);
+        const dlLink = document.createElement('a');
+        dlLink.href = downloadUrl;
+        dlLink.download = `${currentPayload.name}.html`;
+        dlLink.click();
+        URL.revokeObjectURL(downloadUrl);
+
+        btnPreviewContainer.disabled = false;
+
+      } catch (err) {
+        console.error(err);
+        log(`エラー発生: ${err.message}`, 'error');
+        setProgress(0, false);
+      } finally {
+        btnGenerate.disabled = false;
+      }
+    }
+
+    btnGenerate.addEventListener('click', buildContainer);
+
+    // -------------------------------------------------------------------------
+    // PREVIEW / SIMULATION IN IFRAME
+    // -------------------------------------------------------------------------
+    btnPreviewContainer.addEventListener('click', () => {
+      if (!generatedContainerHtml) return;
+      const blob = new Blob([generatedContainerHtml], { type: 'text/html;charset=utf-8' });
+      const previewUrl = URL.createObjectURL(blob);
+      previewIframe.src = previewUrl;
+      document.getElementById('preview-title').textContent = `${currentPayload.name}.html [Base64 Live Sandbox]`;
+      previewModal.classList.remove('hidden');
+    });
+
+    btnCloseModal.addEventListener('click', () => {
+      previewModal.classList.add('hidden');
+      previewIframe.src = 'about:blank';
+    });
+
+    btnDownloadFromPreview.addEventListener('click', () => {
+      if (!generatedContainerHtml) return;
+      const blob = new Blob([generatedContainerHtml], { type: 'text/html;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${currentPayload.name}.html`;
+      a.click();
+    });
+  </script>
+</body>
+</html>
