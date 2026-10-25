@@ -1327,7 +1327,7 @@ endsolid sample_pyramid`;
           let viewerCode = '';
           if (viewerMode === 'builtin') {
             if (ext === 'stl') viewerCode = PRESETS.stl;
-            else if (['csv', 'txt', 'json'].includes(ext)) viewerCode = PRESETS.table;
+            else if (['csv', 'tsv', 'txt', 'json'].includes(ext)) viewerCode = PRESETS.table;
             else if (ext === 'vrm') viewerCode = PRESETS.vrm;
             else viewerCode = PRESETS.raw;
             log(`内蔵ビューア割当: [${ext.toUpperCase()}]`);
